@@ -40,6 +40,13 @@ public class ClientHandler implements Runnable {
            // }
         }
     }
+    public void DirectCastMessage(String message) throws IOException {
+        for (ClientHandler client : Server.getClients()) {
+            if (!client.equals(this)) {
+            client.sendMessage(message);
+             }
+        }
+    }
 
     public void sendMessage(String message) throws IOException {
         out.writeUTF(message);
