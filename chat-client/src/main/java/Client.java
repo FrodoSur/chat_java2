@@ -11,23 +11,35 @@ public class Client {
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             boolean running = true;
             Scanner cin = new Scanner(System.in);
-
-            Thread thread = new Thread(()->{
-                while (running) {
-                    String message = null;
-                    try {
-                        message = in.readUTF();
-                        if (message.equals("_exit_")) {
-                            in.close();
-                            out.close();
-                            break;
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    System.out.println(message);
-                }
+            long time =System.currentTimeMillis();
+            boolean pass = false;
+            Thread thread1 = new Thread(() -> {
+                    String auth = in.readUTF();
+                    pass=true;
             });
+            while(true){
+                if(System.currentTimeMillis()-time<120000) {
+                    thread1.stop();
+                    break;
+                }
+            }
+            if(pass) {
+                Thread thread = new Thread(() -> {
+                    while (running) {
+                        String message = null;
+                        try {
+                            message = in.readUTF();
+                            if (message.equals("_exit_")) {
+                                in.close();
+                                out.close();
+                                break;
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        System.out.println(message);
+                    }
+                });
             thread.setDaemon(true);
             thread.start();
 
@@ -40,6 +52,12 @@ public class Client {
                 }
                 out.writeUTF(line);
                 out.flush();
+            }
+
+            }
+            else{
+                in.close();
+                out.close();
             }
         } catch (Exception e) {
             e.printStackTrace();
