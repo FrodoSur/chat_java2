@@ -15,7 +15,14 @@ public class Client {
             boolean pass = false;
             Thread thread1 = new Thread(() -> {
                     String auth = in.readUTF();
-                    pass=true;
+                    Class.forName("org.sqlite.JDBC");
+                    Connection connection = DriverManager.getConnection(jdbc:sqlite:lessonDB);
+                    Statement stmt =connection.createStatement();
+                    ResultSet result = stmt.executeQuery("select*from students;");
+                    while(result.next()) {
+                        if (auth == result.getString(3))
+                            pass = true;
+                    }
             });
             while(true){
                 if(System.currentTimeMillis()-time<120000) {
