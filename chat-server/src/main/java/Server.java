@@ -1,3 +1,4 @@
+import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -8,7 +9,6 @@ public class Server {
     private final static int PORT = 8189;
     private final static String HOST = "localhost";
     private static int cnt = 1;
-
     private boolean running;
     private static ConcurrentLinkedDeque<ClientHandler> clients;
 
@@ -27,6 +27,7 @@ public class Server {
                 cnt++;
                 clients.add(client); // can produce CME (concurrent modification exception)
                 System.out.println(client.getNickName() + " accepted!");
+
                 new Thread(client).start();
 
             }

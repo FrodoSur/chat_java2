@@ -1,10 +1,11 @@
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 
-public class ClientHandler implements Runnable {
+import static sun.plugin.javascript.navig.JSType.History;
 
+public class ClientHandler implements Runnable {
+    public FileInputStream writer = new FileInputStream("History.txt");
+    private FileOutputStream reader = new FileOutputStream("History.txt");
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
@@ -31,6 +32,21 @@ public class ClientHandler implements Runnable {
     public void welcome() throws IOException {
         out.writeUTF("Hello " + nickName);
         out.flush();
+        String output = " ";
+        byte[] buf = new byte[20];
+        try (FileInputStream in = new FileInputStream("History.txt")) {
+            int count;
+            while ((count = in.read(buf)) > 0) {
+                for (int i = 0; i < count; i++) {
+                    output +=(char) buf[i];
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        out.writeUTF(output);
+        out.flush();
+
     }
 
     public void broadCastMessage(String message) throws IOException {
@@ -66,6 +82,8 @@ public class ClientHandler implements Runnable {
                     }
                     System.out.println(clientMessage);
                     broadCastMessage(clientMessage);
+                    byte[] outData = clientMessage.getBytes();
+                    out.write(outData);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
