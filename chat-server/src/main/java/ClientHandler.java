@@ -32,6 +32,7 @@ public class ClientHandler implements Runnable {
     public void welcome() throws IOException {
         out.writeUTF("Hello " + nickName);
         out.flush();
+        System.out.println("Клиент "+ nickName + " принят");
         String output = " ";
         byte[] buf = new byte[20];
         try (FileInputStream in = new FileInputStream("History.txt")) {
@@ -67,6 +68,7 @@ public class ClientHandler implements Runnable {
     public void sendMessage(String message) throws IOException {
         out.writeUTF(message);
         out.flush();
+        System.out.println("Клиент "+ nickName + " написал сообщение");
     }
 
     @Override
