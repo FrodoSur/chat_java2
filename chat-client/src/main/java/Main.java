@@ -11,8 +11,6 @@ public class Main extends Application {
     public void start(Stage primaryStage) throws Exception{
         Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
         primaryStage.setTitle("Messenger");
-        //primaryStage.initStyle(StageStyle.UNDECORATED);
-        //primaryStage.setScene(new Scene(root, 743, 738));
         primaryStage.setScene(new Scene(root, 743, 767));
         primaryStage.show();
     }
