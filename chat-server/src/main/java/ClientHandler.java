@@ -1,95 +1,110 @@
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.Socket;
 
-import static sun.plugin.javascript.navig.JSType.History;
-
-public class ClientHandler implements Runnable {
-    public FileInputStream writer = new FileInputStream("History.txt");
-    private FileOutputStream reader = new FileOutputStream("History.txt");
+public class ClientHandler {
+    private Server myServer;
     private Socket socket;
-    private DataInputStream in;
-    private DataOutputStream out;
-    private String nickName;
-    private boolean running;
+    private String name;
+    DataInputStream in;
+    DataOutputStream out;
+    private boolean isAuthOk = false;
 
-    public ClientHandler(Socket socket, String nickName) throws IOException {
-        this.socket = socket;
-        this.nickName = nickName;
-        in = new DataInputStream(socket.getInputStream());
-        out = new DataOutputStream(socket.getOutputStream());
-        running = true;
-        welcome();
+    ClientHandler(Server myServer, Socket socket) throws IOException {
+        try {
+            this.myServer = myServer;
+            this.socket = socket;
+            this.in = new DataInputStream(socket.getInputStream());
+            this.out = new DataOutputStream(socket.getOutputStream());
+            this.name = "";
+            new Thread(() -> {
+                try {
+                    authentication();
+                    readMessages();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    closeConnection();
+                }
+            }).start();
+        } catch (IOException e) {
+            throw new RuntimeException("Проблемы при создании обработчика клиента");
+        }
     }
 
-    public String getNickName() {
-        return nickName;
+    public String getName() {
+        return name;
     }
 
-    public void setNickName(String nickName) {
-        this.nickName = nickName;
-    }
-
-    public void welcome() throws IOException {
-        out.writeUTF("Hello " + nickName);
-        out.flush();
-        System.out.println("Клиент "+ nickName + " принят");
-        String output = " ";
-        byte[] buf = new byte[20];
-        try (FileInputStream in = new FileInputStream("History.txt")) {
-            int count;
-            while ((count = in.read(buf)) > 0) {
-                for (int i = 0; i < count; i++) {
-                    output +=(char) buf[i];
+    public void authentication() throws IOException {
+        while (true){
+            String str = in.readUTF();
+            if(str.equals("/end")){
+                sendMsg("/end");
+                break;
+            }
+            if(str.startsWith("/auth")) {
+                String[] parts = str.split("\\s");
+                String nick = myServer.getAuthService().getNickByLoginPass(parts[1], parts[2]);
+                if(nick != null) {
+                    if(!myServer.isNickBusy(nick)){
+                        sendMsg("/authok " + nick);
+                        name = nick;
+                        myServer.broadcastMessage(name + " зашел в чат", this);
+                        myServer.subscribe(this);
+                        isAuthOk = true;
+                        return;
+                    } else {
+                        sendMsg("Учетная запись уже используется");
+                    }
+                } else {
+                    sendMsg("Неверные логин/пароль");
                 }
             }
+        }
+    }
+
+    public void readMessages() throws IOException {
+        while (isAuthOk){
+            String strFromClient = in.readUTF();
+            System.out.println("от " + name + ": " + strFromClient);
+            if(strFromClient.equals("/end")){
+                sendMsg("/end");
+                break;
+            }
+            if(strFromClient.startsWith("/w")){
+                String[] parts = strFromClient.split("\\s");
+                StringBuilder sb = new StringBuilder();
+                for (int i = 2; i < parts.length; i++) {
+                    sb.append(parts[i] + " ");
+                }
+                myServer.privateMessage(this, "pm from " + name + ": " + sb.toString().trim() ,parts[1]);
+            } else {
+                myServer.broadcastMessage(name + ": " + strFromClient, this);
+            }
+        }
+    }
+
+    public void sendMsg(String msg){
+        try {
+            out.writeUTF(msg);
+            out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        out.writeUTF(output);
-        out.flush();
-
     }
 
-    public void broadCastMessage(String message) throws IOException {
-        for (ClientHandler client : Server.getClients()) {
-            //if (!client.equals(this)) {
-                client.sendMessage(message);
-           // }
-        }
-    }
-    public void DirectCastMessage(String message) throws IOException {
-        for (ClientHandler client : Server.getClients()) {
-            if (!client.equals(this)) {
-            client.sendMessage(message);
-             }
+    public void closeConnection(){
+        myServer.unsubscribe(this);
+        myServer.broadcastMessage(name + " вышел из чата", this);
+        try {
+            in.close();
+            out.close();
+            socket.close();
+        } catch (IOException e){
+            e.printStackTrace();
         }
     }
 
-    public void sendMessage(String message) throws IOException {
-        out.writeUTF(message);
-        out.flush();
-        System.out.println("Клиент "+ nickName + " написал сообщение");
-    }
-
-    @Override
-    public void run() {
-        while (running) {
-            try {
-                if (socket.isConnected()) {
-                    String clientMessage = in.readUTF();
-                    if (clientMessage.equals("_exit_")) {
-                        Server.getClients().remove(this);
-                        sendMessage(clientMessage);
-                        break;
-                    }
-                    System.out.println(clientMessage);
-                    broadCastMessage(clientMessage);
-                    byte[] outData = clientMessage.getBytes();
-                    out.write(outData);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }
